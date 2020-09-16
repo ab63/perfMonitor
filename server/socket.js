@@ -11,9 +11,26 @@ function socketMain(io, socket) {
   let macA;
   socket.on("initPerfData", async (data) => {
     macA = data.macA;
-   const response= await checkAndAdd(data);
+    const response = await checkAndAdd(data);
   });
-  socket.on("perfData", (data) => {});
+  socket.on("perfData", (data) => {
+    io.emit("data", data);
+  });
+  Machine.find({}, (err, docs) => {
+    docs.forEach((machine) => {
+      machine.isActive = false;
+      io.emit("data", machine);
+    });
+  });
+
+  socket.on('disconnect', () => {
+    Machine.find({ macA: macA }, (err, docs) => {
+      if (docs.length > 0) {
+        docs[0].isActive = false;
+        io.emit("data", docs[0]);
+      }
+    });
+  });
 }
 
 function checkAndAdd(data) {
@@ -25,9 +42,9 @@ function checkAndAdd(data) {
       } else if (doc == null) {
         let machine = new Machine(data);
         machine.save();
-        resolve('added');
+        resolve("added");
       } else {
-        resolve('found');
+        resolve("found");
       }
     });
   });

@@ -1,4 +1,34 @@
 const os = require("os");
+const io = require("socket.io-client");
+let socket = io("http://localhost:8181");
+
+socket.on("connect", () => {
+  const nI = os.networkInterfaces();
+  let macA;
+
+  for (let key in nI) {
+    if (!nI[key][0].internal) {
+      macA = nI[key][0].mac;
+      break;
+    }
+  }
+
+  performanceData().then((data) => {
+    data.macA = macA;
+    socket.emit("initPerfData", data);
+  });
+
+  let perfDataInterval = setInterval(() => {
+    performanceData().then((data) => {
+      data.macA = macA;
+      socket.emit("perfData", data);
+    });
+  }, 1000);
+
+  socket.on("disconnect", () => {
+    clearInterval(perfDataInterval);
+  });
+});
 
 function performanceData() {
   return new Promise(async (resolve, reject) => {
@@ -16,6 +46,7 @@ function performanceData() {
     const cpuSpeed = cpus[0].speed;
     const numCores = cpus.length;
     const cpuLoad = await getCpuLoad();
+    const isActive =true;
 
     resolve({
       freeMem,
@@ -28,6 +59,7 @@ function performanceData() {
       numCores,
       cpuSpeed,
       cpuLoad,
+      isActive
     });
   });
 }
